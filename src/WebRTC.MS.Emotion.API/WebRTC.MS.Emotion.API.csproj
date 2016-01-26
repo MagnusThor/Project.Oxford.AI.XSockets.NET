@@ -165,7 +165,11 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="css\main.css" />
     <Content Include="default.html" />
+    <Content Include="js\bob.the.binder.latest.js" />
+    <Content Include="js\camera.js" />
+    <Content Include="js\custom.binder.js" />
     <Content Include="Scripts\XSockets.latest.js" />
     <Content Include="Scripts\XSockets.latest.min.js" />
     <Content Include="Web.config" />

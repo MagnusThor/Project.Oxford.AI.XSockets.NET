@@ -3,129 +3,187 @@
 <head>
     <title>WebRTC.MS.Emotion.API</title>
     <meta charset="utf-8" />
-    <style>
-        #photo {
-            max-width: 320px;
-        }
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+    <link href="css/main.css" rel="stylesheet" />
 
-        .result {
-            position: absolute;
-            background: rgba(255, 255, 255, 0.5);
-        }
-
-            .result pre {
-                word-break: break-word;
-            }
-    </style>
 </head>
 <body>
 
-    <div id="wrapper">
+    <nav class="navbar navbar-default">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <a class="navbar-brand" href="#">
+                    webrtc-oxfordai
+                </a>
+            </div>
+        </div>
+    </nav>
 
-        <canvas id="canvas" autoplay></canvas>
+    <div class="container-fluid" id="app">
+        <div class="row">
+            <div class="col-sm-12">
+                <p class="alert alert-info">
+                    This example is tested on Google Chrome and uses getUserMedia to capture the webcam.
+
+                    Using XSockets.NET and Project Oxford Emotion API to recognize emotions. See
+                    <a href="http://projectoxford.ai" target="_blank">projectoxford.ai</a>. Source code for this
+                    demo canbe found on the following Git Repo <a href="https://github.com/MagnusThor/Project.Oxford.AI.XSockets.NET">
+                        Project.Oxford.AI.XSockets.NET
+
+                    </a>.
+                    <span class="text-muted">
+                        Regards , Magnus Thor
+                    </span>
+                </p>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-xs-12 col-md-4">
+                <h3>Camera</h3>
+                <div id="wrapper">
+
+                    <canvas id="camera-canvas" autoplay></canvas>
+
+                </div>
+                <button id="btn-emo" class="btn btn-primary">
+                    <i class="glyphicon glyphicon-camera"></i>
+                    Check emotion
+                </button>
+            </div>
+            <div class="col-sm-12 col-md-8">
+                <div id="result-container">
+                    <h3>Emotion stream&nbsp;<span class="badge" data-bind="text:blobs.length">0</span></h3>
+
+                    <div class="results" data-repeat="blobs">
+
+                        <canvas class="photo" data-bind="buildImage:$this"></canvas>
+
+
+
+                        <table class="table table-striped" data-repeat="emotionResults">
+
+                            <tbody>
+
+
+
+                                <tr>
+                                    <th>Face id</th>
+                                    <th>Anger</th>
+                                    <th>Contempt</th>
+                                    <th>Disgust</th>
+                                    <th>Fear</th>
+                                    <th>Happiness</th>
+                                </tr>
+
+
+                                <tr>
+                                    <td>
+                                        <span data-bind="background-color:color,text:$index" class="badge">
+
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span data-bind="percent:Scores.Anger"></span>
+                                    </td>
+                                    <td>
+                                        <span data-bind="percent:Scores.Contempt"></span>
+                                    </td>
+                                    <td>
+                                        <span data-bind="percent:Scores.Disgust"></span>
+                                    </td>
+                                    <td>
+                                        <span data-bind="percent:Scores.Fear"></span>
+                                    </td>
+                                    <td>
+                                        <span data-bind="percent:Scores.Happiness"></span>
+                                    </td>
+
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
 
     </div>
-    <button id="btn-emo">Check emotion</button>
-    <p>
-        ..
-    </p>
 
 
+
+
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+    <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
     <script src="//blueimp.github.io/JavaScript-Canvas-to-Blob/js/canvas-to-blob.js"></script>
+    <script src="//cdn.rawgit.com/MagnusThor/BobTheBinder/master/src/bob.the.binder.js"></script>
+    <script src="//randomcolor.llllll.li/randomColor.js"></script>
     <script src="Scripts/XSockets.latest.js"></script>
+    <script src="js/custom.binder.js"></script>
+    <script src="js/camera.js"></script>
     <script>
 
 
-        attachMediaStream = function (element, stream) {
-            if (typeof element.srcObject !== 'undefined') {
-                element.srcObject = stream;
-            } else if (typeof element.mozSrcObject !== 'undefined') {
-                element.mozSrcObject = stream;
-            } else if (typeof element.src !== 'undefined') {
-                element.src = URL.createObjectURL(stream);
-            } else {
-                console.log('Error attaching stream to element.');
-            }
-        };
-
-        var Camera = (function () {
-
-            var ctor = function (srm, w, h, canvas) {
-                var self = this;
-                this.canvas = canvas;
-                this.canvas.width = w || 320;
-                this.canvas.height = h || 180;
-                this.video = document.createElement("video");
-                this.video.autoplay = true;
-                this.video.width = w || 320;
-                this.video.height = h || 180;
-                attachMediaStream(this.video, srm);
-                this.context = this.canvas.getContext('2d');
-                this.interval = -1;
-
-                window.setInterval(function () {
-                    self.context.drawImage(self.video, 0, 0, self.canvas.width, self.canvas.height);
-                }, 1000 / 25);
-                this.rectangles = [];
-
+        var ViewModel = (function () {
+            var ctor = function () {
+                this.photo = "";
+                this.emotionResults = [];
+                this.blobs = [];
             };
-
-
-
-            ctor.prototype.takePicture = function (fn, ms) {
-                if (!ms) {
-                    this.context.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
-                    this.canvas.toBlob(function (blob) {
-                        fn(blob, URL.createObjectURL(blob));
-                    });
-                } else {
-                    var that = this;
-                    this.interval = window.setInterval(function () {
-                        that.context.drawImage(that.video, 0, 0, that.canvas.width, that.canvas.height);
-                        that.canvas.toBlob(function (blob) {
-                            fn(blob, URL.createObjectURL(blob));
-                        });
-                    }, ms);
-                }
-
-            };
-
             return ctor;
-
         })();
 
-        var ws, emotionController;
-
-        var camera;
+        var ws, emotionController, camera, viewModel, colors;
         var main = function (evt) {
-            ws = new XSockets.WebSocket("wss://webrtoxfordai.azurewebsites.net:443/", ["emotion"]);
-            emotionController = ws.controller("emotion");
-            emotionController.on("emotionDetected", function (emotionResult) {
-                var parent = document.querySelector("#wrapper");
-                var prior = document.querySelectorAll(".result");
-                for (var i = 0; i < prior.length; i++) {
-                    parent.removeChild(prior[i]);
-                };
-                emotionResult.forEach(function (result) {
-                    var resultDiv = document.createElement("div");
-                    resultDiv.classList.add("result");
-                    resultDiv.style.top = result.FaceRectangle.Top + "px";
-                    resultDiv.style.left = result.FaceRectangle.Left + "px";
-                    resultDiv.style.width = result.FaceRectangle.Width + "px";
-                    resultDiv.style.height = result.FaceRectangle.Height + "px";
-                    var p = document.createElement("pre");
-                    p.textContent = JSON.stringify(result.Scores);
-                    resultDiv.appendChild(p);
-                    parent.appendChild((resultDiv));
-                });
+            viewModel = new ViewModel();
 
+            colors = randomColor({
+                hue: 'blue', count: 20
             });
+
+
+            Bob.apply(Bob.binders).bind(document.querySelector("#app"), viewModel);
+
+
+            //  ev  ws://localhost:56809
+            ws = new XSockets.WebSocket("wss://webrtoxfordai.azurewebsites.net:443/", ["emotion"]);
+
+            emotionController = ws.controller("emotion");
+            emotionController.on("emotiondetected", function (emotionResult) {
+
+                var uint8Array = new Uint8Array(emotionResult.binary);
+                var arrayBuffer = uint8Array.buffer;
+                var remoteBlob = new Blob([arrayBuffer], { type: "image/jpg" });
+
+                viewModel.blobs.push({
+                    url: URL.createObjectURL(remoteBlob),
+                    emotionResults: emotionResult.data.map(function (result, index) {
+                        Object.defineProperty(result, 'color', {
+                            value: colors[index],
+                            writable: false
+                        });
+                        Object.defineProperty(result, '$index', {
+                            value: index,
+                            writable: false
+                        });
+                        return result;
+                    })
+                });
+            });
+
             emotionController.onopen = function (ci) {
                 console.log("connected to emotionController", ci);
             };
-            document.querySelector("#btn-emo").addEventListener("click", function () {
+
+            document.querySelector("#btn-emo").addEventListener("click", function (evt) {
+                evt.target.disabled = true;
+                window.setTimeout(function () {
+                    evt.target.disabled = false;
+                }, 15 * 1000);
                 if (!camera) return;
-                camera.takePicture(function (blob) {
+                camera.takePicture(function (blob, url) {
                     var arrayBuffer;
                     var fileReader = new FileReader();
                     fileReader.onload = function () {
@@ -135,15 +193,15 @@
                     fileReader.readAsArrayBuffer(blob);
                 });
             });
-            navigator.webkitGetUserMedia({ audio: false, video: true },
+            navigator.getUserMedia({ audio: false, video: true },
                 function (stream) {
-                    camera = new Camera(stream, 640, 480, document.querySelector("canvas"));
+                    camera = new Camera(stream, 640, 480, document.querySelector("#camera-canvas"));
                 }, function (err) {
                     console.log("gumError", err);
                 });
         };
         document.addEventListener("DOMContentLoaded", main);
-
     </script>
 </body>
+
 </html>
